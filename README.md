@@ -1,1 +1,3 @@
-# BaumanStudiing
+# BaumanStudying
+
+YOU ARE A GREAT PERSON!
