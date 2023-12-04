@@ -2,16 +2,6 @@ package main
 
 import "fmt"
 
-var a []int = []int{11, 2, 31, 4, 0, 61, 12, 10, 9, 2345, -234, 34, 345, 2, -43, 34, 6, 23, -8}
-
-func less1(i, j int) bool {
-	return a[i] < a[j]
-}
-
-func swap1(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
 func mid(a, b, c int, less func(i, j int) bool) int {
 	if (!less(a, b) && !less(b, c)) || (!less(c, b) && !less(b, a)) {
 		return b
@@ -66,7 +56,18 @@ func qsort(n int,
 }
 
 func main() {
-	fmt.Scan(&a)
-	qsort(len(a), less1, swap1)
-	fmt.Println(a)
+	var n int
+
+	fmt.Scan(&n)
+
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Scan(&a[i])
+	}
+
+	qsort(len(a), func(i, j int) bool { return a[i] < a[j] }, func(i, j int) { a[i], a[j] = a[j], a[i] })
+
+	for _, e := range a {
+		fmt.Printf("%d ", e)
+	}
 }
