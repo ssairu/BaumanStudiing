@@ -6,6 +6,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -86,7 +87,7 @@ func (client *SSHClient) newSession() (*ssh.Session, error) {
 		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	}
 
-	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
+	if err := session.RequestPty("xterm", 80, 100, modes); err != nil {
 		session.Close()
 		return nil, fmt.Errorf("request for pseudo terminal failed: %s", err)
 	}
@@ -97,26 +98,58 @@ func (client *SSHClient) newSession() (*ssh.Session, error) {
 func main() {
 	sshConfig := &ssh.ClientConfig{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		User:            "test",
+		User:            "Artyom",
 		Auth: []ssh.AuthMethod{
-			ssh.Password("SDHBCXdsedfs222"),
+			ssh.Password("somethingGreat"),
 		},
 	}
 
 	client := &SSHClient{
 		Config: sshConfig,
-		Host:   "151.248.113.144",
-		Port:   443,
+		Host:   "127.0.0.1",
+		Port:   2222,
 	}
 
+	startDir := ""
+	in := bufio.NewReader(os.Stdin)
 	for {
 		time.Sleep(1000)
 		fmt.Println("input command")
-		in := bufio.NewReader(os.Stdin)
+
 		command, _ := in.ReadString('\n')
+		command = command[:len(command)-1]
+
+		if len(startDir) != 0 && startDir[0] == '/' {
+			startDir = startDir[1:]
+		}
+
+		commandPATH := command
+		if len(startDir) != 0 {
+			commandPATH = "cd " + startDir + " && " + command
+		}
+
+		words := strings.Fields(command)
+		for i, word := range words {
+			if "cd" == word {
+				if i+1 == len(words) {
+					startDir = ""
+				} else if words[i+1] == "." {
+					continue
+				} else if words[i+1] == ".." {
+					for j := len(startDir) - 1; len(startDir) != 0 && startDir[j] != '/'; j-- {
+						startDir = startDir[:j]
+					}
+					if len(startDir) != 0 && startDir[len(startDir)-1] == '/' {
+						startDir = startDir[:len(startDir)-1]
+					}
+				} else {
+					startDir += "/" + words[i+1]
+				}
+			}
+		}
 
 		cmd := &SSHCommand{
-			Path:   command,
+			Path:   commandPATH,
 			Stdin:  os.Stdin,
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
@@ -129,3 +162,4 @@ func main() {
 		}
 	}
 }
+
