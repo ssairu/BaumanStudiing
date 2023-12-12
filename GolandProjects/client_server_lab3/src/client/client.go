@@ -16,7 +16,7 @@ var getMes []string
 func interact(connIn, connOut *net.TCPConn) {
 	defer connOut.Close()
 	encoder := json.NewEncoder(connOut)
-	decoder := json.NewEncoder(connIn)
+	decoder := json.NewDecoder(connIn)
 	for {
 		// Чтение команды из стандартного потока ввода
 		fmt.Printf("command = ")
@@ -82,15 +82,19 @@ func interact(connIn, connOut *net.TCPConn) {
 			if resp.Data == nil {
 				fmt.Printf("error: data field is absent in response\n")
 			} else {
-				var pair proto.Pair
-				if err := json.Unmarshal(*resp.Data, &pair); err != nil {
+				var mes proto.Message
+				if err := json.Unmarshal(*resp.Data, &mes); err != nil {
 					fmt.Printf("error: malformed data field in response\n")
 				} else {
-					if pair.First == "not" {
-						fmt.Printf("result: %s %s\n", pair.First, pair.Second)
-					} else {
-						fmt.Printf("result: (%s, %s)\n", pair.First, pair.Second)
+					if mes.InitName != NAME {
+						send_request(encoder, "send", &mes)
 					}
+					for _, node := range mes.Names {
+						if node == NAME {
+							getMes = append(getMes, node)
+						}
+					}
+
 				}
 			}
 		case "print":
