@@ -12,8 +12,8 @@ import (
 import "sample/src/proto"
 
 var addrStr = []string{"127.0.0.1:8001", "127.0.0.1:8002", "127.0.0.1:8003"}
-var addrIn, addrOut = addrStr[0], addrStr[1]
-var NAME = "node1"
+var addrIn, addrOut = addrStr[2], addrStr[0]
+var NAME = "node3"
 var getMes []string
 
 // interact - функция, содержащая цикл взаимодействия с сервером.

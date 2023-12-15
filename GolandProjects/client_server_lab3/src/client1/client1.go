@@ -12,7 +12,7 @@ import (
 import "sample/src/proto"
 
 var addrStr = []string{"127.0.0.1:8001", "127.0.0.1:8002", "127.0.0.1:8003"}
-var addrIn, addrOut = addrStr[0], addrStr[1]
+var addrIn, addrOut = addrStr[1], addrStr[2]
 var NAME = "node1"
 var getMes []string
 
