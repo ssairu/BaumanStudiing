@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	log "github.com/mgutz/logxi/v1"
 	"net"
+	"os"
 	"strconv"
 	"time"
 )
@@ -22,6 +24,9 @@ func interact(connIn, connOut *net.TCPConn) {
 	defer connIn.Close()
 	encoder := json.NewEncoder(connOut)
 	decoder := json.NewDecoder(connIn)
+
+	go serve(decoder, encoder)
+
 	for {
 		// Чтение команды из стандартного потока ввода
 		fmt.Printf("command = ")
@@ -35,18 +40,20 @@ func interact(connIn, connOut *net.TCPConn) {
 			return
 		case "send":
 			var mes proto.Message
-			addres := ""
+			address := ""
 			fmt.Printf("Введите сообщение на одной строке:\n")
-			fmt.Scanln(&mes.Message)
+			reader := bufio.NewReader(os.Stdin)
+			mes.Message, _ = reader.ReadString('\n')
+			mes.Message = mes.Message[:len(mes.Message)-1]
 			fmt.Printf("Сколько адресатов этого сообщения?\n")
-			fmt.Scan(&addres)
+			fmt.Scan(&address)
 			fmt.Printf("Введите имена адресатов\n")
 			n := 0
-			for _, err := strconv.Atoi(addres); err != nil; {
+			for _, err := strconv.Atoi(address); err != nil; {
 				fmt.Println("Это не число, введите число, пожалуйста")
-				_, err = strconv.Atoi(addres)
+				_, err = strconv.Atoi(address)
 			}
-			n, _ = strconv.Atoi(addres)
+			n, _ = strconv.Atoi(address)
 			for i := 0; i < n; i++ {
 				var buf string
 				fmt.Scan(&buf)
@@ -57,60 +64,48 @@ func interact(connIn, connOut *net.TCPConn) {
 			send_request(encoder, "send", &mes)
 		case "print":
 			if len(getMes) == 0 {
-				println("no messages")
+				fmt.Println("no messages")
 			} else {
-				for x := range getMes {
-					println(x)
+				for _, x := range getMes {
+					fmt.Printf("\"%s\"\n", x)
 				}
 			}
 		default:
 			fmt.Printf("error: unknown command\n")
 			continue
 		}
+	}
+}
 
-		// Получение ответа.
-		var resp proto.Response
-		if err := decoder.Decode(&resp); err != nil {
-			fmt.Printf("error: %v\n", err)
+func serve(decoder *json.Decoder, encoder *json.Encoder) {
+	for {
+		var req proto.Request
+		if err := decoder.Decode(&req); err != nil {
+			fmt.Printf("cannot decode message: %s", err)
 			break
-		}
-
-		// Вывод ответа в стандартный поток вывода.
-		switch resp.Status {
-		case "ok":
-			fmt.Printf("ok\n")
-		case "failed":
-			if resp.Data == nil {
-				fmt.Printf("error: data field is absent in response\n")
-			} else {
-				var errorMsg string
-				if err := json.Unmarshal(*resp.Data, &errorMsg); err != nil {
-					fmt.Printf("error: malformed data field in response\n")
+		} else {
+			//fmt.Printf("received command: %s", req.Command)
+			switch req.Command {
+			case "send":
+				if req.Data == nil {
+					fmt.Printf("error: data field is absent in response\n")
 				} else {
-					fmt.Printf("failed: %s\n", errorMsg)
-				}
-			}
-		case "result":
-			if resp.Data == nil {
-				fmt.Printf("error: data field is absent in response\n")
-			} else {
-				var mes proto.Message
-				if err := json.Unmarshal(*resp.Data, &mes); err != nil {
-					fmt.Printf("error: malformed data field in response\n")
-				} else {
-					if mes.InitName != NAME {
-						send_request(encoder, "send", &mes)
-					}
-					for _, node := range mes.Names {
-						if node == NAME {
-							getMes = append(getMes, mes.Message)
+					var mes proto.Message
+					if err := json.Unmarshal(*req.Data, &mes); err != nil {
+						fmt.Printf("error: malformed data field in response\n")
+					} else {
+						if mes.InitName != NAME {
+							send_request(encoder, "send", &mes)
 						}
+						for _, node := range mes.Names {
+							if node == NAME {
+								getMes = append(getMes, mes.Message)
+							}
+						}
+						//fmt.Printf("***    get message \"%s\"    ***", mes.Message)
 					}
-					fmt.Printf("*get message \"%s\"*", mes.Message)
 				}
 			}
-		default:
-			fmt.Printf("error: server reports unknown status %q\n", resp.Status)
 		}
 	}
 }
