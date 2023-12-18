@@ -9,11 +9,10 @@ import (
 
 func main() {
 	if len(os.Args) < 4 {
-		fmt.Println("Usage: go run main.go <to_email> <subject> <message_body>")
+		fmt.Println("Usage: go run mail_sender.go <to_email> <subject> <message_body>")
 		os.Exit(1)
 	}
 
-	// Параметры для подключения к SMTP серверу
 	smtpHost := "mail.nic.ru"
 	smtpPort := 465
 	username := "dts21@dactyl.su"
@@ -22,23 +21,17 @@ func main() {
 	subject := os.Args[2]
 	messageBody := os.Args[3]
 
-	// Формирование сообщения
-	message := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", toEmail, subject, messageBody)
-
-	// Настройка подключения с поддержкой SSL
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true, // Настройте это правильно для безопасного использования в боевом режиме
+		InsecureSkipVerify: true,
 		ServerName:         smtpHost,
 	}
 
-	// Подключение к SMTP серверу
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", smtpHost, smtpPort), tlsConfig)
 	if err != nil {
 		fmt.Println("Error connecting to SMTP server:", err)
 		os.Exit(1)
 	}
 
-	// Авторизация на SMTP сервере
 	auth := smtp.PlainAuth("", username, password, smtpHost)
 	client, err := smtp.NewClient(conn, smtpHost)
 	if err != nil {
@@ -51,7 +44,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Отправка сообщения
 	if err := client.Mail(username); err != nil {
 		fmt.Println("Error setting sender:", err)
 		os.Exit(1)
@@ -69,6 +61,7 @@ func main() {
 	}
 	defer w.Close()
 
+	message := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", toEmail, subject, messageBody)
 	_, err = w.Write([]byte(message))
 	if err != nil {
 		fmt.Println("Error writing message:", err)
@@ -76,7 +69,5 @@ func main() {
 	}
 
 	fmt.Println("Email sent successfully!")
-
-	// Завершение соединения
 	client.Quit()
 }
