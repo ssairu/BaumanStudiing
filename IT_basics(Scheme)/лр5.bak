@@ -1,0 +1,118 @@
+(define (next x) (+ x 1))
+
+(define (my-eval exprs)
+  (eval exprs (interaction-environment)))
+
+
+(define (find lexem program i)
+  (if (equal? (vector-ref program i) lexem)
+      i
+      (find lexem program (next i))))
+
+
+(define (interpret program start-stack)
+  (let doit ((i 0) (stack start-stack) (stack-- '()) (slova '()))
+    (if (= i (vector-length program))
+        stack
+        (let ((word (vector-ref program i)))
+          (cond
+            ((number? word) (doit (next i) (cons word stack) stack-- slova))
+            ((equal? word '+) (doit (next i) (cons (+ (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word '-) (doit (next i) (cons (- (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word '*) (doit (next i) (cons (* (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word '/) (doit (next i) (cons (quotient (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word 'mod) (doit (next i) (cons (remainder (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word '>) (doit (next i) (cons (if (> (cadr stack) (car stack)) -1 0) (cddr stack)) stack-- slova))
+            ((equal? word '<) (doit (next i) (cons (if (< (cadr stack) (car stack)) -1 0) (cddr stack)) stack-- slova))
+            ((equal? word '=) (doit (next i) (cons (if (= (cadr stack) (car stack)) -1 0) (cddr stack)) stack-- slova))
+            ((equal? word 'and) (doit (next i) (cons (if (and (= (car stack) -1) (= (cadr stack) -1)) -1 0) (cddr stack)) stack-- slova))
+            ((equal? word 'or) (doit (next i) (cons (if (or (= (car stack) -1) (= (cadr stack) -1)) -1 0) (cddr stack)) stack-- slova))
+            ((equal? word 'neg) (doit (next i) (cons (- (car stack)) (cdr stack)) stack-- slova))
+            ((equal? word 'not) (doit (next i) (cons (if (= (car stack) 0) -1 0) (cdr stack)) stack-- slova))
+            ((equal? word 'drop) (doit (next i) (cdr stack) stack-- slova))
+            ((equal? word 'swap) (doit (next i) (append (list (cadr stack) (car stack)) (cddr stack)) stack-- slova))
+            ((equal? word 'dup) (doit (next i) (cons (car stack) stack) stack-- slova))
+            ((equal? word 'over) (doit (next i) (cons (cadr stack) stack) stack-- slova))
+            ((equal? word 'rot) (doit (next i) (append (list (caddr stack) (cadr stack) (car stack)) (cdddr stack)) stack-- slova))
+            ((equal? word 'depth) (doit (next i) (cons (length stack) stack) stack-- slova))
+            ((equal? word 'define) (doit (next (find 'end program i)) stack stack--
+                                         (cons (list (vector-ref program (next i)) (+ i 2)) slova)))
+            ((or (equal? word 'end) (equal? word 'exit)) (doit (car stack--) stack (cdr stack--) slova))
+            ((equal? word 'if) (doit (if (zero? (car stack)) (next (find 'endif program i)) (next i)) (cdr stack) stack-- slova))
+            ((equal? word 'endif) (doit (next i) stack stack-- slova))
+            ((equal? word 'while) (if (zero? (car stack))
+                                      (doit (next (find 'wend program i)) stack stack-- slova)
+                                      (doit (next i) stack (cons i stack--) slova)))
+            ((equal? word 'wend) (doit (car stack--) stack (cdr stack--) slova))
+            ((equal? word 'repeat) (doit (next i) stack (cons i stack--) slova))
+            ((equal? word 'until) (doit (if (zero? (car stack)) (next i) (car stack--)) stack (cdr stack--) slova))
+            ((equal? word 'for) (if (<= (car stack) (cadr stack))
+                                    (doit (next i) stack (cons i stack--) slova)
+                                    (doit (next (find 'endfor program i)) (cddr stack) stack-- slova)))
+            ((equal? word ') (doit (car stack--) (cons (next (car stack)) (cdr stack)) (cdr stack--) slova))
+            (else (doit (cadr (assoc word slova)) stack (cons (next i) stack--) slova)))))))
+
+
+
+(interpret #(   define abs 
+                 dup 0 < 
+                 if neg endif 
+                 end 
+                 9 abs 
+                 -9 abs      ) (quote ()))
+
+(interpret #(   define =0? dup 0 = end
+                 define <0? dup 0 < end
+                 define signum
+                 =0? if exit endif
+                 <0? if drop -1 exit endif
+                 drop
+                 1
+                 end
+                 0 signum
+                 -5 signum
+                 10 signum       ) (quote ()))
+
+(interpret #(   define -- 1 - end
+                 define =0? dup 0 = end
+                 define =1? dup 1 = end
+                 define factorial
+                 =0? if drop 1 exit endif
+                 =1? if drop 1 exit endif
+                 dup --
+                 factorial
+                 *
+                 end
+                 0 factorial
+                 1 factorial
+                 2 factorial
+                 3 factorial
+                 4 factorial     ) (quote ()))
+
+(interpret #(   define =0? dup 0 = end
+                 define =1? dup 1 = end
+                 define -- 1 - end
+                 define fib
+                 =0? if drop 0 exit endif
+                 =1? if drop 1 exit endif
+                 -- dup
+                 -- fib
+                 swap fib
+                 +
+                 end
+                 define make-fib
+                 dup 0 < if drop exit endif
+                 dup fib
+                 swap --
+                 make-fib
+                 end
+                 10 make-fib     ) (quote ()))
+
+(interpret #(   define =0? dup 0 = end
+                 define gcd
+                 =0? if drop exit endif
+                 swap over mod
+                 gcd
+                 end
+                 90 99 gcd
+                 234 8100 gcd    ) '())

@@ -1,0 +1,39 @@
+задача 1
+
+
+задача 2
+
+(define (seq a b c)
+    (let ((decr (- (* b b) (* 4 a c))))
+         (cond ((< decr 0) '())
+               ((= decr 0) (list (/ (- b) (* 2 a))))
+               ((> decr 0) (list (/ (- (- b) (sqrt decr)) (* 2 a))
+                                 (/ (- (sqrt decr) b) (* 2 a)))))))
+тесты 
+                         
+(display (seq 1 2 1))
+(newline)
+(display (seq 1 3 2))
+(newline)
+(display (seq 1 2 2))
+
+
+задача 3
+
+(define (my-gcd x y)
+    (cond ((or (< x 0) (< y 0)) (my-gcd (abs x) (abs y)))
+          ((< x y) (my-gcd y x))
+          ((= y 0) x)
+          (else (my-gcd y (remainder x y)))))
+
+(define (my-lsm x y)
+    (/ (* (abs x) (abs y)) (my-gcd x y)))
+
+(define (prime? n)
+    (let ((i 2))
+         (letrec ((proof 
+                (lambda (x y)
+                  (and (> x 2)
+                    (or (> y (/ (+ x 1) 2))
+                        (and (= (my-gcd x y) 1) (proof x (+ y 1))))))))
+                  (proof n i))))

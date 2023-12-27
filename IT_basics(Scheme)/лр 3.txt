@@ -1,0 +1,122 @@
+(define-syntax trace-ex
+  (syntax-rules ()
+    ((xss expr)
+     (begin
+       (write 'expr)
+       (let ((res expr))
+         (begin
+           (display " => ")
+           (write res)
+           (newline)
+           expr))))))
+
+(define (zip . xss)
+  (if (or (null? xss)
+          (null? (trace-ex (car xss))))
+      '()
+      (cons (map car xss)
+            (apply zip (map cdr (trace-ex xss)))))) 
+
+
+
+
+(define-syntax test
+  (syntax-rules ()
+    ((_ expression expected) (list (quote expression) expected))))
+
+(define (run-test xs)
+  (display (car xs))
+  (let ((res (eval (car xs) (interaction-environment))))
+        (if (equal? res (cadr xs))
+              (begin (display " ok")
+                     (newline)
+                     #t)
+              (begin (display " FAIL")
+                     (newline)
+                     (display "   Expected: ")
+                     (write (cadr xs))
+                     (newline)
+                     (display "   Returned: ")
+                     (write res)
+                     (newline)
+                     #f))))
+
+
+(define (func first second) (and first second))
+
+(define (run-tests tests)
+  (if (null? tests)
+      (list)
+      (func (run-test (car tests))
+            (run-tests (cdr tests)))))
+
+(define (signum x)
+  (cond
+    ((< x 0) -1)
+    ((= x 0)  1) ; Ошибка здесь!
+    (else     1)))
+
+(define the-tests
+  (list (test (signum -2) -1)
+        (test (signum  0)  0)
+        (test (signum  2)  1)))
+
+(run-tests the-tests)
+
+
+
+
+
+(define (ref xs n . value)
+  (if (null? value)
+      (cond
+        ((string? xs) (ref (string->list xs) n))
+        ((vector? xs) (ref (vector->list xs) n))
+        ((if (< (length xs) (- n 1))
+             #f
+             (car (list-tail xs n)))))
+      (cond
+        ((list? xs) (and (>= (length xs) n)
+                         (append (append (reverse (list-tail (reverse xs) (- (length xs) n))) (cons (car value) '())) (list-tail xs n))))
+        ((vector? xs) (and (>= (length (vector->list xs)) n)
+                           (list->vector (append (append (reverse (list-tail (reverse (vector->list xs)) (- (length (vector->list xs)) n)))
+                                                         (cons (car value) '()))
+                                                 (list-tail (vector->list xs) n)))))
+        ((string? xs) (and (>= (length (string->list xs)) n)
+                           (list->string (append (append (reverse (list-tail (reverse (string->list xs)) (- (length (string->list xs)) n)))
+                                                         (cons (car value) '()))
+                                                 (list-tail (string->list xs) n))))))))
+
+(display (ref '(1 2 3) 1))
+(newline)
+(display (ref #(1 2 3) 1))
+(newline)
+(display (ref "123" 1))
+(newline)
+
+
+
+
+
+
+(define (factorize expr)
+  (let ((a (cadr (cadr expr))) (b (cadr (caddr expr))))
+    (cond
+      ((and (equal? (caddr (cadr expr)) 2) (equal? (car expr) '-))
+       (list '* (list '- a b) (list '+ a b)))
+      ((and (equal? (caddr (cadr expr)) 3) (equal? (car expr) '-))
+       (list '* (list '- a b) (list '+ (expt a 2) (list '* a b) (expt b 2))))
+      ((and (equal? (caddr (cadr expr)) 3) (equal? (car expr) '+))
+       (list '* (list '+ a b) (list '+ (expt a 2) (list '- (list '* a b)) (expt b 2))))
+      (else expr))))
+
+(display (factorize '(- (expt x 2) (expt y 2))))
+(newline)
+(display (factorize '(- (expt (+ first 1) 2) (expt (- second 1) 2))))
+(newline)
+(display (eval (list (list 'lambda 
+                  '(x y) 
+                  (factorize '(- (expt x 2) (expt y 2))))
+            1 2)
+      (interaction-environment)))
+  (newline)

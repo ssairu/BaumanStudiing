@@ -1,0 +1,145 @@
+задача 1
+
+(define (my-range a b d)
+    (if (< a b)
+        (cons a (my-range (+ a d) b d))
+        '()))
+
+(define (my-flatten xs)
+    (if (null? xs)
+        '()
+        (if (list? (car xs))
+            (append (my-flatten (car xs)) (my-flatten (cdr xs)))
+            (cons (car xs) (my-flatten (cdr xs))))))
+
+(define (my-element? x xs)
+    (and (not (null? xs))
+        (or (equal? (car xs) x) (my-element? x (cdr xs)))))
+
+(define (my-filter pred? xs)
+    (if (null? xs)
+        '()
+        (if (pred? (car xs))
+            (cons (car xs) (my-filter pred? (cdr xs)))
+            (my-filter pred? (cdr xs)))))
+
+(define (my-fold-left op xs)
+    (if (null? (cdr xs))
+        (car xs)
+        (if (null? (cddr xs))
+            (op (car xs) (cadr xs))
+            (my-fold-left op (cons (op (car xs) (cadr xs)) (cddr xs))))))
+
+(define (my-fold-right op xs)
+    (if (null? (cdr xs))
+        (car xs)
+        (op (car xs) (my-fold-right op (cdr xs)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+задача 2
+
+(define (list->set xs)
+    (if (null? xs)
+        '()
+        (letrec ((in? (lambda (x xs) 
+                        (and (not (null? xs))
+                            (or (equal? (car xs) x) (in? x (cdr xs)))))))
+                (if (in? (car xs) (cdr xs))
+                    (list->set (cdr xs))
+                    (cons (car xs) (list->set (cdr xs)))))))
+                
+
+(define (set? xs)
+    (equal? xs (list->set xs)))
+
+(define (union xs ys)
+    (list->set (append xs ys)))
+
+(define (intersection xs ys)
+    (if (null? xs)
+        '()
+        (letrec ((in? (lambda (a as) 
+                            (and (not (null? as))
+                                (or (equal? (car as) a) (in? a (cdr as)))))))
+                   (if (in? (car xs) ys)
+                       (cons (car xs) (intersection (cdr xs) ys))
+                       (intersection (cdr xs) ys)))))
+                   
+(define (difference xs ys)
+    (if (null? xs)
+        '()
+        (letrec ((in? (lambda (a as) 
+                            (and (not (null? as))
+                                (or (equal? (car as) a) (in? a (cdr as)))))))
+                   (if (in? (car xs) ys)
+                       (difference (cdr xs) ys)
+                       (cons (car xs) (difference (cdr xs) ys))))))
+                   
+(define (symmetric-difference xs ys)
+    (difference (union xs ys) (intersection xs ys)))
+
+(define (set-eq? xs ys)
+    (and (= (length xs) (length ys))
+         (letrec ((sod? (lambda (ns ms) 
+                            (or (null? ns)
+                                 (letrec ((in? (lambda (a as) 
+                                                    (and (not (null? as))
+                                                        (or (equal? (car as) a) (in? a (cdr as)))))))
+                                           (and (in? (car ns) ms) (sod? (cdr ns) ms)))))))
+                 (sod? xs ys))))
+
+
+
+тесты
+
+(display (list->set '(1 1 2 3 3 3 2)))
+(newline)
+(display (set? '(1 1 2 3 3 3 2)))
+(newline)
+(display (set? '(1 2 3)))
+(newline)
+(display (set? '()))
+(newline)
+(display (union '(1 2 3) '(2 3 4)))
+(newline)
+(display (intersection '(1 2 3) '(2 3 4)))
+(newline)
+(display (difference '(1 2 3 4 5) '(2 3)))
+(newline)
+(display (symmetric-difference '(1 2 3 4) '(3 4 5 6)))
+(newline)
+(display (set-eq? '(1 2 3) '(3 2 1)))
+(newline)
+(display (set-eq? '(1 2) '(1 3)))
+(newline)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+задача 3
+
+
+
+
+
+
+задача 4
+
+
+
+
+
+
+
+задача 5
+
+(define (o . xs)
+(if (null? xs)
+(lambda (x) x)
+   (lambda (x) ((car xs) ((apply o (cdr xs)) x))))
+
+
+
+
+
+
