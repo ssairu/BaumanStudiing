@@ -1,3 +1,5 @@
+from itertools import chain
+
 import numpy as np
 from OpenGL.GL import *
 import glfw
@@ -28,11 +30,18 @@ glfw.make_context_current(window)
 glfw.set_key_callback(window, key_callback)
 glfw.set_mouse_button_callback(window, mouse_button_callback)
 
-vertices = [-0.9, -0.5, 0.0,
-            -0.5, 0.5, 0.0,
-            0.5, 0.5, 0.0,
-            0.5, -0.5, 0.0,
-            0.0, -0.9, 0.0]
+a = [
+                [10, 20], [250, 200], [300, 30], [400, 300], [300, 400]
+            ]
+z=[]
+for x in a:
+    x.append(0)
+    z.append(x)
+
+x = list(chain.from_iterable(z))
+print(x)
+vertices = [y/800 for y in x]
+print(vertices)
 
 # list the color code here
 colors = [0.5, 0.5, 0,

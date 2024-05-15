@@ -1,6 +1,8 @@
+#import glumpy.glm as glm
 import numpy as np
 from OpenGL.GL import *
 import glfw
+from glumpy import gloo
 
 angle = 0.0
 
@@ -31,9 +33,12 @@ vertex_code = """
     layout(location = 0) attribute vec3 position;
     layout(location = 1) attribute vec3 color;
     varying vec4 v_color;
+    uniform mat4   model;
+    uniform mat4   view;
+    uniform mat4   projection;
 
     void main(){
-        gl_Position = vec4(position, 1.0);
+        gl_Position = projection * view * model * vec4(position, 1.0);
         v_color = vec4(color, 1.0);
     } """
 
@@ -57,22 +62,33 @@ glfw.set_key_callback(window, key_callback)
 glfw.set_mouse_button_callback(window, mouse_button_callback)
 glfw.set_window_size_callback(window, window_resize)
 
-vertices = [(-0.9, -0.5, 0.0),
-            (0.0, -0.9, 0.0),
-            (0.5, -0.5, 0.0),
-            (0.5, 0.5, 0.0),
-            (-0.5, 0.5, 0.0)]
+vertices = [(-0.5, -0.5, 0.5),
+            (0.5, -0.5, 0.5),
+            (0.5, 0.5, 0.5),
+            (-0.5, 0.5, 0.5),
+
+            (-0.5, -0.5, -0.5),
+            (0.5, -0.5, -0.5),
+            (0.5, 0.5, -0.5),
+            (-0.5, 0.5, -0.5)]
 
 # list the color code here
 colors = [(1, 0.5, 0),
           (0, 0.8, 0.9),
           (0, 0.3, 0.6),
           (0.1, 0.8, 0.1),
-          (1, 0.2, 1.0)]
 
-indexes = [0, 1, 2,
-           0, 2, 3,
-           0, 3, 4]
+          (1, 0.5, 0),
+          (0, 0.8, 0.9),
+          (0, 0.3, 0.6),
+          (0.1, 0.8, 0.1)]
+
+indexes = [0, 1, 2, 2, 3, 0,
+           4, 5, 6, 6, 7, 4,
+           4, 5, 1, 1, 0, 4,
+           6, 7, 3, 3, 2, 6,
+           5, 6, 2, 2, 1, 5,
+           7, 4, 0, 0, 3, 7]
 
 program = glCreateProgram()
 vertex = glCreateShader(GL_VERTEX_SHADER)
@@ -111,7 +127,7 @@ buffer = glGenBuffers(1)
 glBindBuffer(GL_ARRAY_BUFFER, buffer)
 
 indexes = np.array(indexes, np.uint32)
-data = np.zeros(5, [("position", np.float32, 3),
+data = np.zeros(8, [("position", np.float32, 3),
                     ("color", np.float32, 3)])
 data['position'] = vertices
 data['color'] = colors
@@ -132,6 +148,21 @@ EBO = glGenBuffers(1)
 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
 glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexes.nbytes, indexes, GL_STATIC_DRAW)
 
+data = data.view(gloo.VertexBuffer)
+indexes = indexes.view(gloo.IndexBuffer)
+cube = gloo.Program(vertex, fragment)
+cube["position"] = data
+
+view = np.eye(4, dtype=np.float32)
+glm.translate(view, 0, 0, -5)
+
+projection = np.eye(4, dtype=np.float32)
+model = np.eye(4, dtype=np.float32)
+
+cube['model'] = model
+cube['view'] = view
+cube['projection'] = projection
+
 # Now we will pour color for the animation's background
 glClearColor(0, 0.7, 0.5, 1)
 
@@ -140,7 +171,7 @@ while not glfw.window_should_close(window):
     glfw.poll_events()
     glClear(GL_COLOR_BUFFER_BIT)
     # creating rotation animated motion
-    glRotatef(angle, 1, 1, 1)
+    # glRotatef(angle, 1, 1, 1)
     # glDrawArrays(GL_POLYGON, 0, 5)
     glDrawElements(GL_TRIANGLES, len(indexes), GL_UNSIGNED_INT, None)
     glfw.swap_buffers(window)
