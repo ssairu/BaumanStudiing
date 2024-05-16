@@ -3,8 +3,8 @@ from itertools import chain
 import glfw
 from OpenGL.GL import *
 
-visible = True
-testing = True
+visible = False
+testing = False
 
 
 class Lab4:
@@ -141,6 +141,7 @@ class Lab4:
                 except Exception as e:
                     self.figure = []
 
+                print([int(x), self.height - int(y)])
                 self.figure.append([int(x), self.height - int(y)])
 
     def key_callback(self, _, key, scancode, action, mods):

@@ -85,7 +85,7 @@ def on_init():
     # gl.glFrontFace(gl.GL_CW)
 
 
-n = 3
+n = 56
 r = 1
 V = np.zeros(n * 2 + 1, [("position", np.float32, 3),
                          ("color", np.float32, 4)])
