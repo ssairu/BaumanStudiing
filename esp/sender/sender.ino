@@ -10,15 +10,33 @@ painlessMesh  mesh;
 
 void sendMessage();
 
-Task taskSendMessage( TASK_SECOND * 1 , TASK_FOREVER, &sendMessage );
+Task taskSendMessage( TASK_SECOND * 10 , TASK_FOREVER, &sendMessage );
+
 
 void sendMessage() {
-  // String msg = "5:2.42:-47.4:";
+  // String msg = "qwertyuiop";
   // mesh.sendBroadcast( msg );
   // Serial.println(msg);
-  String msg2 = Serial.readString();
-  Serial.println(msg2);
-}
+  // String msg2 = Serial.readString();
+  // Serial.println(msg2);
+  // mesh.sendBroadcast( msg2 );
+      while(Serial.available() > 0) {
+        String trash = Serial.readStringUntil('&');
+        if ((char)Serial.read() != '$' || (char)Serial.read() != '&'){
+          continue;
+        }
+        
+        String msg2 = "&$&" + Serial.readStringUntil('%');
+        char t1 = (char)Serial.read();
+        char t2 = (char)Serial.read();
+        while (t1 != '@' || t2 != '%'){
+          msg2 = msg2 + "%" + t1 + t2 + Serial.readStringUntil('%');
+        }
+        msg2 = msg2 + "%@%";
+        Serial.print(msg2); 
+        mesh.sendBroadcast( msg2 );
+      }
+    }
 
 
 void receivedCallback( uint32_t from, String &msg ) {
@@ -39,10 +57,10 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.setTimeout(15000);
+  Serial.setTimeout(1000);
 
-//mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
- mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION );  // set before init() so that you can see startup messages
+  mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
+//  mesh.setDebugMsgTypes( STARTUP | CONNECTION );  // set before init() so that you can see startup messages
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
   mesh.onReceive(&receivedCallback);
@@ -59,3 +77,4 @@ void setup() {
 void loop() {
   mesh.update();
 }
+
