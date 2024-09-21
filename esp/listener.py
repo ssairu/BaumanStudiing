@@ -7,6 +7,28 @@ MAX_SIZE_FRAG = 10000
 idimg = 1000
 
 
+class Converter:
+    def __init__(self, size=4):
+        self.size = size
+
+    def int_to_bytes(self, num):
+        res = b''
+        for i in range(self.size):
+            ost = num % 255 + 1
+            res = ost.to_bytes(1, "big") + res
+            num = num // 255
+        return res
+
+    def bytes_to_int(self, bint):
+        mem = memoryview(bint)
+        res = 0
+        power = 1
+        for i in range(self.size):
+            res += (mem[self.size - i - 1] - 1) * power
+            power *= 255
+        return res
+
+
 class Frag:
     def __init__(self, img_id, frag_id, data):
         self.img_id = img_id
@@ -42,11 +64,12 @@ class Image:
 
 
 class Imgforbuilder:
-    def __init__(self, img_id, num_frags):
+    def __init__(self, img_id, num_frags, shape):
         self.img_id = img_id
         self.frags = []
         self.num_frags = num_frags
         self.ready = False
+        self.shape = shape
 
     def add_frag(self, frag):
         if self.ready:
@@ -78,7 +101,7 @@ class Imgforbuilder:
         else:
             self.sort_frags()
             data = b''
-            for f in sort(self.frags):
+            for f in self.frags:
                 data += f.data
             return data
 
@@ -91,34 +114,39 @@ class ImageBuilder:
 
     def imginload(self, frag):
         for x in self.load:
-            if (frag.img_id == x.img_id):
+            if frag.img_id == x.img_id:
                 return True
         return False
 
     def get_img_pos_load(self, frag):
         res = -1
         for i in range(len(self.load)):
-            if (self.load[i].img_id == frag.img_id):
+            if self.load[i].img_id == frag.img_id:
                 res = i
         return res
 
     def get_img_pos_get(self, frag):
         res = -1
         for i in range(len(self.get)):
-            if (self.get[i].img_id == frag.img_id):
+            if self.get[i].img_id == frag.img_id:
                 res = i
         return res
 
-    def add_frag(self, frag):
-        if self.imginload(frag):
-            ipos = self.get_img_pos_load(frag)
-            self.load[ipos].add_frag(frag)
-            if self.load[ipos].isready():
-                self.get += [self.load[ipos]]
-                self.new += [self.load[ipos]]
-                self.load = self.load[: ipos] + self.load[ipos + 1:]
-        else:
-            self.load += [imgforbuilder(frag.img_id, num_fragments)]
+    def add_frag(self, frag, img_shape):
+        if not self.imginload(frag):
+            self.load += [Imgforbuilder(frag.img_id, num_fragments, img_shape)]
+            print("add image " + str(frag.img_id) + "to builder")
+            print("frag added " + str(frag.id) + "\nfrags:")
+            print(len(self.load[-1].frags))
+
+        ipos = self.get_img_pos_load(frag)
+        self.load[ipos].add_frag(frag)
+        print(str(frag.id) + " / " + str(self.load[ipos].num_frags) + "total(" + str(len(self.load[ipos].frags)) + ")")
+        if self.load[ipos].isready():
+            self.get += [self.load[ipos]]
+            self.new += [self.load[ipos]]
+            self.load = self.load[: ipos] + self.load[ipos + 1:]
+        # print(self.load)
 
     def get_ready(self):
         return self.get
@@ -144,6 +172,15 @@ class ImageBuilder:
             return True
 
 
+# c = Converter()
+# for i in range(10000000):
+#     num = c.bytes_to_int(c.int_to_bytes(i))
+#     if num != i:
+#         print(c.bytes_to_int(c.int_to_bytes(i)))
+#     if i % 1000000 == 0:
+#         print(str(i) + "%\n")
+
+
 # Set the directory for saving the image
 directory = r'/home/user/Arduino/aim'
 # directory = r'C:\Users\Dmitriy\Pictures' #WINDOWS
@@ -152,15 +189,15 @@ directory = r'/home/user/Arduino/aim'
 # Change the working directory to the specified directory for saving the image
 os.chdir(directory)
 
-ser = serial.Serial('/dev/ttyUSB0')
+ser = serial.Serial('/dev/ttyUSB5')
 # ser = serial.Serial('/dev/ttyUSB1') #WINDOWS
 ser.baudrate = 115200
 
 get_imgs = []
 builder = ImageBuilder()
 
-
 while 0 == 0:
+
     start_flag = 0
     start_aim = '&$&'
     while start_flag < 3:
@@ -170,12 +207,14 @@ while 0 == 0:
             start_flag += 1
         else:
             start_flag *= 0
-
-    id_img = int.from_bytes(ser.read(4), "big")
+    c = Converter()
+    lc = Converter(2)
+    id_img = c.bytes_to_int(ser.read(4))
     print(id_img)
-    id_fragment = int.from_bytes(ser.read(4), "big")
-    size_fragment = int.from_bytes(ser.read(4), "big")
-    num_fragments = int.from_bytes(ser.read(4), "big")
+    id_fragment = c.bytes_to_int(ser.read(4))
+    size_fragment = c.bytes_to_int(ser.read(4))
+    num_fragments = c.bytes_to_int(ser.read(4))
+    shape = tuple([lc.bytes_to_int(ser.read(2)), lc.bytes_to_int(ser.read(2)), 3])
     response = ser.read(size=size_fragment)
 
     ending = str(ser.read(3), 'utf-8')
@@ -186,15 +225,16 @@ while 0 == 0:
         print('WRONG, WITHOUT ENDING')
         break
 
-    print(response)
     frag = Frag(id_img, id_fragment, response)
-    builder.add_frag(frag)
+    builder.add_frag(frag, shape)
+    # print(builder.get_new())
 
     if builder.have_new():
         for img in builder.get_new():
-            decoded_response = np.frombuffer(img.getimgdata(), dtype=uint8)
+            decoded_response = np.frombuffer(img.getimgdata(), dtype=np.uint8)
             res = decoded_response.reshape(img.shape)
-            print(decoded_response)
+            # print(decoded_response)
+            print(res)
 
             # Save the image with the filename "cat.jpg"
             filename = str(idimg) + 'copy.jpg'

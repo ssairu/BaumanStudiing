@@ -10,7 +10,7 @@ painlessMesh  mesh;
 
 void sendMessage();
 
-Task taskSendMessage( TASK_SECOND * 10 , TASK_FOREVER, &sendMessage );
+Task taskSendMessage( TASK_SECOND * 1 , TASK_FOREVER, &sendMessage );
 
 
 void sendMessage() {
@@ -20,24 +20,57 @@ void sendMessage() {
   // String msg2 = Serial.readString();
   // Serial.println(msg2);
   // mesh.sendBroadcast( msg2 );
-      while(Serial.available() > 0) {
-        String trash = Serial.readStringUntil('&');
-        if ((char)Serial.read() != '$' || (char)Serial.read() != '&'){
+  String counter = "";
+  while (Serial.available()){
+        char character = 0;
+        while (character != '&'){
+          character = char(Serial.read());;
+        }
+        char s1 = char(Serial.read());
+        char s2 = char(Serial.read());
+        if (s1 != '$' || s2 != '&'){
           continue;
         }
+        counter = counter + "+";
+
+        String content = "";
         
-        String msg2 = "&$&" + Serial.readStringUntil('%');
-        char t1 = (char)Serial.read();
-        char t2 = (char)Serial.read();
-        while (t1 != '@' || t2 != '%'){
-          msg2 = msg2 + "%" + t1 + t2 + Serial.readStringUntil('%');
+
+        for (int i = 0; i < 20; i++){
+          character = char(Serial.read());
+          Serial.print(character);
+          content = content + character;
         }
-        msg2 = msg2 + "%@%";
+        
+        while (character != '%'){
+          character = char(Serial.read());
+          Serial.print(character);
+          content = content + character;
+        }
+        
+
+        String msg2 = "&$&" + content;
+        char t1 = char(Serial.read());
+        char t2 = char(Serial.read());
+        while (t1 != '@' || t2 != '%'){
+
+          content = "";
+          while (character != '%'){
+            character = char(Serial.read());
+            Serial.print(character);
+            content = content + character;
+          }
+
+          msg2 = msg2 + t1 + t2 + content;
+          t1 = (char)Serial.read();
+          t2 = (char)Serial.read();
+        }
+        msg2 = msg2 + "@%"; // + counter;
+        
         Serial.print(msg2); 
         mesh.sendBroadcast( msg2 );
       }
-    }
-
+}
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
@@ -57,7 +90,7 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.setTimeout(1000);
+  Serial.setTimeout(100000);
 
   mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
 //  mesh.setDebugMsgTypes( STARTUP | CONNECTION );  // set before init() so that you can see startup messages
