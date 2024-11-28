@@ -7,21 +7,38 @@
 Scheduler userScheduler;
 painlessMesh  mesh;
 
+void prmsg();
+
+Task taskPrintMsg(TASK_IMMEDIATE , TASK_FOREVER, &prmsg);
+
+
+String out = "";
+void prmsg(){
+  if (out != ""){
+    if (out.length() > 50){
+      Serial.print(out.substring(0, 50));
+      out = out.substring(50);
+    }
+    else{
+      Serial.print(out.substring(0, out.length()));
+      out = "";
+    }
+  }
+}
+
 
 void receivedCallback( uint32_t from, String &msg ) {
-  Serial.printf("%s", msg.c_str());
+  out += msg;
 }
 
 void newConnectionCallback(uint32_t nodeId) {
-    Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
 }
 
 void changedConnectionCallback() {
-  Serial.printf("Changed connections\n");
+  
 }
 
 void nodeTimeAdjustedCallback(int32_t offset) {
-    Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),offset);
 }
 
 void setup() {
@@ -37,6 +54,9 @@ void setup() {
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
   mesh.setContainsRoot(true);
+
+  userScheduler.addTask( taskPrintMsg );
+  taskPrintMsg.enable();
 }
 
 void loop() {

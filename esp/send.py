@@ -4,7 +4,8 @@ import os
 import numpy as np
 import time
 
-MAX_SIZE_FRAG = 100
+MAX_SIZE_FRAG = 1700
+idimg = 4
 
 
 class Converter:
@@ -48,7 +49,6 @@ class frag:
         print(' ]\n')
 
 
-idimg = 1
 
 
 class image:
@@ -87,13 +87,13 @@ class image:
 
 
 # Set the file path for the source image
-path = r'ps.png'
+path = r'fire.jpg'
 
 # Load the image using OpenCV
 img = cv2.imread(path)
 print(img.shape)
 
-ser = serial.Serial('/dev/ttyUSB9')
+ser = serial.Serial('/dev/ttyUSB0')
 ser.baudrate = 115200
 
 devided_image = image(img.tobytes(), img.shape).tobytesFrags()
@@ -102,13 +102,23 @@ for x in devided_image:
     print(len(x))
     print(counter)
     counter = counter + 1
-    print(x.replace(b'\x00', b'\x01'))
+    x1 = x.replace(b'\x00', b'\x01')
+    print(x1)
 
-    ser.write(x.replace(b'\x00', b'\x01'))
-    # ser.write(b'&$&------------------------------------------------------------' + counter + b'%@%')
-    # counter += b'+'
-    time.sleep(0.5)
-    # ser.write(x)
+    num = 0
+    crit_size = 50
+    if len(x1) % crit_size == 0:
+        num = len(x1) // crit_size
+    else:
+        num = len(x1) // crit_size + 1
+
+    for i in range(0, num):
+        if i == num - 1:
+            ser.write(x1[i * crit_size:])
+            # time.sleep(0.5)
+        else:
+            ser.write(x1[i * crit_size: (i + 1) * crit_size])
+            time.sleep(0.015)
 
 # Закрываем порт
 ser.close()
